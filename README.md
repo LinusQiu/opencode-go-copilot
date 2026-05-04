@@ -77,7 +77,7 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 ### 使用
 
 1. **设置 API Key**：`Ctrl+Shift+P` → `OpenCodeGo: Set OpenCode Go API Key`
-2. **显示模型**：在模型选择器中点击设置图标 ⚙️ → **语言模型** 面板 → 勾选需要使用的模型
+2. **显示模型**：在模型选择器中点击设置图标 ⚙️ → **语言模型** 面板 → 将需要使用的模型显示
 3. **选择模型**：在 Copilot Chat 底部模型选择器中选择 "OpenCode Go" 下的模型
 4. **开始对话**
 
