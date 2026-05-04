@@ -41,6 +41,7 @@
 | **重试机制** | 可配置的指数退避重试策略，应对网络抖动和限流 (429) |
 | **请求延迟** | 可配置的请求间隔延迟，避免触发 API 限流 |
 | **超时控制** | 可配置的请求超时时间（默认 10 分钟） |
+| **立即取消** | 取消请求时通过 `reader.cancel()` 立即中断流式读取，停止后台接收 |
 
 ### 1.3 模型清单
 
@@ -139,6 +140,11 @@ provideLanguageModelChatResponse(model, messages, options, progress, token)
   │      └── 连接 VS Code 取消令牌 → abort()
   │
   ├── 9. 创建 undici fetch (自定义 bodyTimeout)
+  │
+  ├── 9b. 获取 Response body reader 后，注册取消回调
+  │      └── `token.onCancellationRequested` / `signal.addEventListener("abort")`
+  │      └── 调用 `reader.cancel()` 立即中断流，使 `reader.read()` 返回 `{ done: true }`
+  │
   │
   ├── 10. 根据 apiMode 路由:
   │
@@ -682,13 +688,13 @@ API 实现的抽象基类。
 构建 OpenAI 请求体。设置 temperature、top_p、max_tokens、reasoning_effort、thinking 模式、stop、tools、tool_choice 以及各种惩罚参数和 extra 参数。
 
 #### `processStreamingResponse(responseBody, progress, token): Promise<void>`
-处理 OpenAI SSE 流式响应。逐行解析 `data:` 前缀的 SSE 事件，处理 `[DONE]` 标记，解析 usage 用量信息，委托 `processDelta()`。
+处理 OpenAI SSE 流式响应。逐行解析 `data:` 前缀的 SSE 事件，处理 `[DONE]` 标记，解析 usage 用量信息，委托 `processDelta()`。注册取消回调：`token.onCancellationRequested` 时调用 `reader.cancel()` 立即中断流式读取。
 
 #### `private processDelta(delta, progress): Promise<boolean>`
 处理单个 stream delta。按序处理：推理内容 → XML think 块 → 文本内容 → 工具调用。支持 `reasoning_details` 数组（OpenRouter 格式）。
 
 #### `async *createMessage(model, systemPrompt, messages, baseUrl, apiKey, signal?): AsyncGenerator<{ type: "text"; text: string }>`
-非流式聊天消息生成器（用于 Git 提交生成）。发送 HTTP 请求后 yield 文本块。
+非流式聊天消息生成器（用于 Git 提交生成）。发送 HTTP 请求后 yield 文本块。注册取消回调：`signal.addEventListener("abort")` 时调用 `reader.cancel()` 立即中断流。
 
 ---
 
@@ -746,7 +752,7 @@ Anthropic 请求体。包含 `model`, `messages`, `max_tokens`, `system`, `strea
 构建 Anthropic 请求体。设置 max_tokens、system、temperature、top_p、top_k、tools（转换为 Anthropic 格式）、tool_choice（auto/any/none）以及 extra 参数。
 
 #### `processStreamingResponse(responseBody, progress, token): Promise<void>`
-处理 Anthropic SSE 流式响应。逐行解析 `data:` 前缀的 SSE 事件，委托 `processAnthropicChunk()`。
+处理 Anthropic SSE 流式响应。逐行解析 `data:` 前缀的 SSE 事件，委托 `processAnthropicChunk()`。注册取消回调：`token.onCancellationRequested` 时调用 `reader.cancel()` 立即中断流式读取。
 
 #### `private processAnthropicChunk(chunk, progress): Promise<void>`
 处理 Anthropic 流式块。支持的事件类型：
@@ -759,7 +765,7 @@ Anthropic 请求体。包含 `model`, `messages`, `max_tokens`, `system`, `strea
 - `content_block_stop` / `message_stop` — 清空缓冲区
 
 #### `async *createMessage(model, systemPrompt, messages, baseUrl, apiKey, signal?): AsyncGenerator<{ type: "text"; text: string }>`
-非流式消息生成器（Anthropic 模式，用于 Git 提交生成）。
+非流式消息生成器（Anthropic 模式，用于 Git 提交生成）。注册取消回调：`signal.addEventListener("abort")` 时调用 `reader.cancel()` 立即中断流。
 
 ---
 
