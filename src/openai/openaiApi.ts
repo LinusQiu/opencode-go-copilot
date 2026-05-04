@@ -248,6 +248,13 @@ export class OpenaiApi extends CommonApi<OpenAIChatMessage, Record<string, unkno
         const decoder = new TextDecoder();
         let buffer = "";
 
+        // Immediately cancel the stream when user cancels, so reader.read() won't stay pending
+        if (token.onCancellationRequested) {
+            token.onCancellationRequested(() => {
+                reader.cancel().catch(() => {});
+            });
+        }
+
         try {
             while (true) {
                 if (token.isCancellationRequested) {
@@ -500,6 +507,13 @@ export class OpenaiApi extends CommonApi<OpenAIChatMessage, Record<string, unkno
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+
+        // Cancel the reader immediately when abort signal fires
+        if (signal) {
+            signal.addEventListener("abort", () => {
+                reader.cancel().catch(() => {});
+            });
+        }
 
         try {
             while (true) {

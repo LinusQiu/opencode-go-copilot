@@ -234,6 +234,13 @@ export class AnthropicApi extends CommonApi<AnthropicMessage, AnthropicRequestBo
 		const decoder = new TextDecoder();
 		let buffer = "";
 
+		// Immediately cancel the stream when user cancels, so reader.read() won't stay pending
+		if (token.onCancellationRequested) {
+			token.onCancellationRequested(() => {
+				reader.cancel().catch(() => {});
+			});
+		}
+
 		try {
 			while (true) {
 				if (token.isCancellationRequested) {
@@ -418,6 +425,13 @@ export class AnthropicApi extends CommonApi<AnthropicMessage, AnthropicRequestBo
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = "";
+
+		// Cancel the reader immediately when abort signal fires
+		if (signal) {
+			signal.addEventListener("abort", () => {
+				reader.cancel().catch(() => {});
+			});
+		}
 
 		try {
 			while (true) {
