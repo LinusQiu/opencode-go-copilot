@@ -16,7 +16,7 @@ let commitGenerationAbortController: AbortController | undefined;
 
 const DEFAULT_PROMPT = {
     system:
-        "You are a helpful assistant that generates concise, informative git commit messages based on git diffs.\n\nGuidelines:\n- By default, use conventional commit format: <type>(<scope>): <description>\n- If reference commits are provided below, match their style instead\n- Keep the subject line under 72 characters\n- Use the imperative mood (\"add\" not \"added\" / \"adds\")\n- Skip any preamble, explanations, or backticks — output only the commit message\n- If the diff is large, focus on the most important changes",
+        "You are a helpful assistant that generates concise, informative git commit messages based on git diffs.\n\nGuidelines:\n- By default, use conventional commit format: <type>(<scope>): <description>\n- If reference commits are provided below, match their style and language instead\n- Keep the subject line under 72 characters\n- Use the imperative mood (\"add\" not \"added\" / \"adds\")\n- CRITICAL: Output ONLY the commit message itself — no preamble, no introduction, no explanations, no backticks\n- If the diff is large, focus on the most important changes",
     user: "Notes from developer (ignore if not relevant): {{USER_CURRENT_INPUT}}",
     styleReference: "\n\nRecent commit messages in this repository (match their style):\n{{RECENT_COMMITS}}",
 };
@@ -161,6 +161,26 @@ async function ensureApiKey(secrets: vscode.SecretStorage): Promise<string | und
     return apiKey;
 }
 
+/**
+ * Detect the natural language used in commit messages.
+ * Examines recent commit subjects to determine the dominant language.
+ * Falls back to English when detection is ambiguous.
+ */
+function detectLanguageFromCommits(commits: string): string {
+    if (!commits) return "English";
+
+    // Japanese: contains hiragana or katakana
+    if (/[\u3040-\u309F\u30A0-\u30FF]/.test(commits)) return "Japanese";
+
+    // Korean: contains hangul syllables
+    if (/[\uAC00-\uD7AF]/.test(commits)) return "Korean";
+
+    // Chinese: contains CJK unified ideographs (and not matched by above)
+    if (/[\u4E00-\u9FFF]/.test(commits)) return "Chinese (Simplified)";
+
+    return "English";
+}
+
 async function performCommitMsgGeneration(secrets: vscode.SecretStorage, gitDiff: string, inputBox: any, repoPath?: string) {
     const startTime = Date.now();
     let modelId: string | undefined;
@@ -171,10 +191,11 @@ async function performCommitMsgGeneration(secrets: vscode.SecretStorage, gitDiff
         const customSystemPrompt = config.get<string>("opencodego.commitMessagePrompt", "");
         let systemPrompt = customSystemPrompt || DEFAULT_PROMPT.system;
 
-        // Fetch recent commits for style reference
+        // Fetch recent commits for style reference and language detection
         const recentCommitsCount = config.get<number>("opencodego.recentCommitsCount", 10);
+        let recentCommits: string | undefined;
         if (recentCommitsCount > 0 && repoPath) {
-            const recentCommits = await getRecentCommits(repoPath, recentCommitsCount);
+            recentCommits = await getRecentCommits(repoPath, recentCommitsCount);
             if (recentCommits) {
                 systemPrompt += DEFAULT_PROMPT.styleReference.replace("{{RECENT_COMMITS}}", recentCommits);
             }
@@ -208,9 +229,15 @@ async function performCommitMsgGeneration(secrets: vscode.SecretStorage, gitDiff
             throw new Error(l10n("Invalid base URL configuration."));
         }
 
-        const commitLanguage = config.get<string>("opencodego.commitLanguage", "English");
-
-        systemPrompt += ` Generate commit message in ${commitLanguage}.`;
+        // Determine commit language: auto mode detects from recent history
+        const commitLanguage = config.get<string>("opencodego.commitLanguage", "auto");
+        let detectedLanguage = commitLanguage;
+        if (commitLanguage === "auto") {
+            detectedLanguage = recentCommits ? detectLanguageFromCommits(recentCommits) : "English";
+        }
+        if (detectedLanguage !== "auto") {
+            systemPrompt += ` Generate commit message in ${detectedLanguage}.`;
+        }
 
         const messages = [{ role: "user", content: prompt }];
 
