@@ -960,7 +960,51 @@ npm run build
 > 
 > 任何提交中若包含代码变更但未同步更新本文档，视为不合规。
 
-### 6.2 代码风格
+### 6.3 PR 内容规范
+
+> **当用户要求生成 PR (Pull Request) 内容时，必须遵循以下模板风格。**
+
+#### PR Title 格式
+
+使用 Conventional Commit 风格：
+```
+<type>: <brief description>
+```
+
+type 取值：`feat` | `fix` | `refactor` | `docs` | `chore` | `improve` 等。
+
+#### PR Body 模板
+
+```markdown
+### Changes
+
+**1. <功能/改动标题>**
+- <具体变更点 1>
+- <具体变更点 2>
+- <...>
+
+**2. <下一个功能/改动标题>**
+- <具体变更点>
+- <...>
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `<file path>` | <一句话说明改了什么> |
+| `<file path>` | <一句话说明改了什么> |
+```
+
+#### 撰写规范
+
+- Title 首字母小写，用英文撰写
+- Body 使用英文，用 **粗体标题** 组织 major change areas
+- Changes 部分用项目符号列出每个功能点的具体变更，每点以句号结尾
+- Files Changed 表格只列关键文件，说明简洁（不需要行数、路径全称）
+- 不包含"如何测试"、"如何回滚"等运维内容，除非用户特别要求
+- 语气精炼、直接，聚焦"改了什么"而非"为什么改"
+
+### 6.4 代码风格
 
 - 使用 TypeScript 严格模式 (`strict: true`)
 - 遵循 ES2024 标准
