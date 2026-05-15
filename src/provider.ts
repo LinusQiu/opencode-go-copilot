@@ -12,7 +12,7 @@ import {
 
 import * as path from "path";
 
-import type { OpenCodeGoModelItem } from "./types";
+import type { ModelPreset, OpenCodeGoModelItem } from "./types";
 
 import { createRetryConfig, executeWithRetry } from "./utils";
 
@@ -144,7 +144,7 @@ export class OpenCodeGoChatModelProvider implements LanguageModelChatProvider {
                 const tempPreset = config.get<string>("opencodego.modelPreset", "custom");
                 if (tempPreset && tempPreset !== "custom") {
                     // 从 modelPresets 数组中查找匹配 id 的预设值（含 top_p）
-                    const presets = config.get<{ id: string; temperature: number; top_p?: number }[]>("opencodego.modelPresets", []);
+                    const presets = config.get<ModelPreset[]>("opencodego.modelPresets", []);
                     const matchedPreset = presets.find((p) => p.id === tempPreset);
                     if (matchedPreset !== undefined && matchedPreset.temperature !== undefined) {
                         um.temperature = matchedPreset.temperature;

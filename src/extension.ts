@@ -3,6 +3,7 @@ import { OpenCodeGoChatModelProvider } from "./provider";
 import { initStatusBar } from "./statusBar";
 import { logger } from "./logger";
 import { l10n } from "./localize";
+import type { ModelPreset } from "./types";
 import { abortCommitGeneration, generateCommitMsg } from "./gitCommit/commitMessageGenerator";
 import { TokenizerManager } from "./tokenizer/tokenizerManager";
 
@@ -58,9 +59,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand("opencodego.setModelPreset", async () => {
             const config = vscode.workspace.getConfiguration();
-            type Preset = { id: string; label: string; temperature: number; top_p: number };
             // 读取用户自定义的预设列表
-            const presets = config.get<Preset[]>("opencodego.modelPresets", []);
+            const presets = config.get<ModelPreset[]>("opencodego.modelPresets", []);
             // 读取当前选中的预设 ID 和手动输入的温度/top_p
             const currentPreset = config.get<string>("opencodego.modelPreset", "custom");
             const currentTemp = config.get<number | null>("opencodego.temperature", null);
