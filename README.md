@@ -1,39 +1,58 @@
-# OpenCode Go Copilot
+<center>
+
+![logo](/assets/logo.png)
+
+# OpenCode Go Provider for Copilot
 
 [English](#english) | [中文](#中文)
 
----
+</center>
 
 ## English
 
 > **This is not affiliated with, officially maintained by, or endorsed by OpenCode or Anomaly.**
 
-Integrate [OpenCode Go](https://opencode.ai/go) models into GitHub Copilot Chat as a VS Code extension.
+Integrate [OpenCode Go](https://opencode.ai/go) and optional Zen free models into GitHub Copilot Chat as a VS Code extension.
 
 ### Usage
 
 1. **Set API Key**: `Ctrl+Shift+P` → `OpenCodeGo: Set OpenCode Go API Key`
-2. **Show Models**: Click the settings icon ⚙️ in the model picker → **Language Models** panel → set your desired models to Visible
+2. **Show Models**: Click the settings icon in the model picker → **Language Models** panel → set your desired models to Visible
 3. **Select Model**: In the Copilot Chat bottom model picker, choose an "OpenCode Go" or "OpenCode Zen" model
 4. **Start chatting**
 
 ### OpenCode Zen Free Models
 
-Enable via `opencodego.enableZenFreeModels` setting (default off). When enabled, 5 free models (Big Pickle, DeepSeek V4 Flash, MiniMax M2.5, Ring 2.6 1T, Nemotron 3 Super) fetched from the Zen API are added to the model picker with a `Zen/` prefix (e.g. `Zen/DeepSeek V4 Flash Free`). Requires a full reload of VS Code to take effect after changing the setting.
-
-> If a free model is no longer available as free, the extension will display a friendly error prompt asking you to use a different model.
+Disabled by default. Enable via the `opencodego.enableZenFreeModels` setting. When enabled, free models fetched from the Zen API are added to the model picker with a `Zen/` prefix (e.g. `Zen/DeepSeek V4 Flash Free`). Requires a full reload of VS Code to take effect after changing the setting.
 
 ### Token Usage Indicator
 
 Once installed, the status bar shows the current context usage and cumulative input/output token counts for OpenCode Go models. DeepSeek models and models that return cache metrics via the OpenAI-compatible format also display the **cumulative cache hit count** and **cache hit rate** in the tooltip.
 
-> Note: Whether non-DeepSeek models display cache data depends on whether the model API returns cache metrics in OpenAI-compatible format. This does not indicate whether the model supports caching — caching support depends on OpenCode Go.
+> Note: Whether non-DeepSeek models display cache data depends on whether the model API returns cache metrics in an OpenAI-compatible format. This does not indicate whether the model supports caching — caching support depends on OpenCode Go.
 
 ![token_counter](/assets/screenshots/token_counter.png)
 
 ### Git Commit Messages
 
 Click the **magic wand** button in the Source Control (SCM) panel to auto-generate a commit message.
+
+You can configure the model, language, number of recent commits to reference, and whether to attach context files.
+
+### Model Temperature Presets
+
+Quickly switch temperature presets via `Ctrl+Shift+P` → `OpenCodeGo: Set Model Temperature Preset`.
+
+Built-in presets:
+
+| Preset | Temperature |
+|--------|-------------|
+| Precise | 0.0 |
+| Balanced | 1.0 |
+| Creative | 1.2 |
+| Extra Creative | 1.7 |
+
+You can also configure `opencodego.temperature` and `opencodego.top_p` directly in `settings.json` (requires `opencodego.modelPreset` set to `"custom"`).
 
 ### Configuration
 
@@ -54,23 +73,15 @@ Available in `settings.json`:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `opencodego.commitLanguage` | `auto` | Language for Git commit messages. When set to `auto`, the language is detected from recent commit history (defaults to English if no history exists). |
-| `opencodego.commitModel` | `deepseek-v4-flash` | Model ID used for commit generation |
-| `opencodego.commitMessagePrompt` | `""` | Custom system prompt for commit message generation |
+| `opencodego.commitModel` | `deepseek-v4-flash` | Model ID used for commit message generation. |
+| `opencodego.commitMessagePrompt` | `""` | Custom system prompt for commit message generation. |
 | `opencodego.requestTimeout` | `600000` | Maximum time (ms) for a single API request. Default is 600000 (10 minutes). Increase if long responses time out. |
 | `opencodego.recentCommitsCount` | `10` | Number of recent commits to analyze for style reference when generating commit messages. Set to 0 to disable. |
 | `opencodego.commitIncludeCommitDiff` | `false` | Include the actual code changes (diff) of recent commits in the style reference, helping the model generate messages that better match the project's commit style. |
 | `opencodego.enableZenFreeModels` | `false` | Enable OpenCode Zen free models in the model picker. Zen free models are NOT supported for git commit message generation. Requires a full reload to take effect. |
-| `opencodego.commitAttachContextFiles` | `true` | Attach AGENTS.md and README.md from the repository root as additional context for commit message generation, helping the model better understand the project. |
+| `opencodego.commitAttachContextFiles` | `true` | Attach the content of AGENTS.md and README.md from the repository root as additional context for commit message generation, helping the model better understand the project. |
 
-> All requests use `temperature: 0` for deterministic output.  
-> Models with switchable thinking (e.g., DeepSeek, Qwen) provide reasoning effort levels such as Disabled/High/Maximum.
-
-> **VS Code 1.120+**: To configure thinking effort for a model:
-> 1. Click the model name in the Chat model picker to open the dropdown
-> 2. Click the **gear icon** ⚙️ to the right of the model name
-> 3. Select the desired **Thinking Effort** level
->
-> The current effort level is shown next to the model name in the picker button (e.g., "DeepSeek V4 Pro · High"). Directly clicking the label text is not supported — use the gear icon submenu instead.
+> Models with switchable thinking (e.g., DeepSeek, Qwen) provide reasoning effort levels such as `Disabled`/`High`/`Maximum`.
 
 ### Build
 
@@ -90,32 +101,47 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 
 > **本插件与 OpenCode 或 Anomaly 无关，也未获得其官方维护或认可。**
 
-将 [OpenCode Go](https://opencode.ai/go) 模型集成到 GitHub Copilot Chat 的 VS Code 扩展。
+将 [OpenCode Go](https://opencode.ai/go) 以及可选的 Zen 免费模型集成到 GitHub Copilot Chat 的 VS Code 扩展。
 
 ### 使用
 
 1. **设置 API Key**：`Ctrl+Shift+P` → `OpenCodeGo: Set OpenCode Go API Key`
-2. **显示模型**：在模型选择器中点击设置图标 ⚙️ → **语言模型** 面板 → 将需要使用的模型显示
+2. **显示模型**：在模型选择器中点击设置图标 → **语言模型** 面板 → 将需要使用的模型显示
 3. **选择模型**：在 Copilot Chat 底部模型选择器中选择 "OpenCode Go" 或 "OpenCode Zen" 下的模型
 4. **开始对话**
 
-### OpenCode Zen 免费模型
+### 启用 OpenCode Zen 免费模型
 
-通过 `opencodego.enableZenFreeModels` 设置启用（默认关闭）。开启后，将从 Zen API 获取 5 个免费模型（Big Pickle、DeepSeek V4 Flash、MiniMax M2.5、Ring 2.6 1T、Nemotron 3 Super）并添加到模型选择器中，名称带 `Zen/` 前缀（如 `Zen/DeepSeek V4 Flash Free`）。更改设置后需要重新加载 VS Code 才能生效。
-
-> 如果免费模型已结束免费使用，扩展会显示友好的错误提示，引导你使用其他模型。
+该功能默认关闭，通过 `opencodego.enableZenFreeModels` 设置启用。开启后，将从 Zen API 获取免费模型并添加到模型选择器中，名称带 `Zen/` 前缀（如 `Zen/DeepSeek V4 Flash Free`）。更改设置后需要重新加载 VS Code 才能生效。
 
 ### Token 用量指示器
 
 安装后，使用 OpenCode Go 提供的模型时，状态栏会显示当前上下文用量与累计输入/输出 Token 量。DeepSeek 和通过 OpenAI 格式返回缓存用量的模型还会显示**累计缓存命中量**与**缓存命中率**。
 
-> 提示: 非 DeepSeek 的模型是否显示缓存数据取决于模型接口是否通过 OpenAI 格式返回缓存数据，这并不代表此模型是否支持缓存。模型对于缓存的支持情况取决于 OpenCode Go。
+> 提示：非 DeepSeek 的模型是否显示缓存数据取决于模型接口是否通过 OpenAI 格式返回缓存数据，这并不代表此模型是否支持缓存。模型对于缓存的支持情况取决于 OpenCode Go。
 
 ![token_counter](/assets/screenshots/token_counter.png)
 
 ### Git 提交消息
 
 在源代码管理（SCM）面板中点击魔法棒按钮，自动生成 Git 提交消息。
+
+可在配置里配置使用的模型、语言、参考的最近提交数量以及是否附加上下文文件。
+
+### 调整模型温度
+
+通过 `Ctrl+Shift+P` → `OpenCodeGo: Set Model Temperature Preset` 快速切换温度预设。
+
+内置 4 个预设档位：
+
+| 档位 | 温度 |
+|------|------|
+| 精确 | 0.0 |
+| 均衡 | 1.0 |
+| 创意 | 1.2 |
+| 极具创意 | 1.7 |
+
+也可在 `settings.json` 中直接配置 `opencodego.temperature` 和 `opencodego.top_p`（需将 `opencodego.modelPreset` 设为 `"custom"`）。
 
 ### 配置
 
@@ -136,23 +162,15 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `opencodego.commitLanguage` | `auto` | 提交消息语言。设为 `auto` 时将根据历史提交自动检测语言（无历史时默认英语）。 |
-| `opencodego.commitModel` | `deepseek-v4-flash` | 用于生成提交消息的模型 |
-| `opencodego.commitMessagePrompt` | `""` | 生成提交消息的自定义系统提示词 |
+| `opencodego.commitModel` | `deepseek-v4-flash` | 用于生成提交消息的模型。 |
+| `opencodego.commitMessagePrompt` | `""` | 生成提交消息的自定义系统提示词。 |
 | `opencodego.requestTimeout` | `600000` | 单个 API 请求的最大等待时间（毫秒）。默认 600000（10 分钟）。生成长内容超时时可增大此值。 |
 | `opencodego.recentCommitsCount` | `10` | 生成提交消息时参考的近期提交数量，用于学习仓库提交风格。设为 0 可禁用。 |
 | `opencodego.commitIncludeCommitDiff` | `false` | 在风格参考中包含历史提交的实际代码变更（diff），帮助模型生成更符合项目提交风格的消息。 |
 | `opencodego.enableZenFreeModels` | `false` | 启用 OpenCode Zen 免费模型并添加到模型选择器中。暂不支持用于 Git 提交消息生成。更改后需重载 VS Code 生效。 |
 | `opencodego.commitAttachContextFiles` | `true` | 将仓库根目录的 AGENTS.md 和 README.md 作为额外上下文附加到提交消息生成中，帮助模型更好地理解项目。 |
 
-> 所有请求使用 `temperature: 0` 以确保输出确定性。  
 > 支持切换思考模式的模型（如 DeepSeek、Qwen）提供`禁用思考`/`高`/`极高`等推理强度选项。
-
-> **VS Code 1.120+**: 如需修改模型的推理强度：
-> 1. 点击 Chat 底部模型选择器中的模型名称，打开下拉菜单
-> 2. 点击模型名称右侧的**齿轮图标** ⚙️
-> 3. 选择需要的**推理强度**级别
->
-> 当前强度级别会显示在模型选择器按钮中（如 "DeepSeek V4 Pro · 极高"），但该文本仅为标签，无法直接点击修改，请使用齿轮图标子菜单。
 
 ### 编译
 
@@ -164,4 +182,4 @@ npm run build      # 打包为 extension.vsix
 
 ### 许可
 
-MIT License。参考了 [oai-compatible-copilot](https://github.com/JohnnyZ93/oai-compatible-copilot) 的代码。
+MIT License。本项目参考了 [oai-compatible-copilot](https://github.com/JohnnyZ93/oai-compatible-copilot) 的代码。
