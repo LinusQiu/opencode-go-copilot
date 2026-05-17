@@ -1,4 +1,4 @@
-<center>
+<div align="center">
 
 ![logo](/assets/logo.png)
 
@@ -6,10 +6,11 @@
 
 [English](#english) | [中文](#中文)
 
-</center>
+</div>
 
 ## English
 
+> [!IMPORTANT]
 > **This is not affiliated with, officially maintained by, or endorsed by OpenCode or Anomaly.**
 
 Integrate [OpenCode Go](https://opencode.ai/go) and optional Zen free models into GitHub Copilot Chat as a VS Code extension.
@@ -21,15 +22,12 @@ Integrate [OpenCode Go](https://opencode.ai/go) and optional Zen free models int
 3. **Select Model**: In the Copilot Chat bottom model picker, choose an "OpenCode Go" or "OpenCode Zen" model
 4. **Start chatting**
 
-### OpenCode Zen Free Models
-
-Disabled by default. Enable via the `opencodego.enableZenFreeModels` setting. When enabled, free models fetched from the Zen API are added to the model picker with a `Zen/` prefix (e.g. `Zen/DeepSeek V4 Flash Free`). Requires a full reload of VS Code to take effect after changing the setting.
-
 ### Token Usage Indicator
 
 Once installed, the status bar shows the current context usage and cumulative input/output token counts for OpenCode Go models. DeepSeek models and models that return cache metrics via the OpenAI-compatible format also display the **cumulative cache hit count** and **cache hit rate** in the tooltip.
 
-> Note: Whether non-DeepSeek models display cache data depends on whether the model API returns cache metrics in an OpenAI-compatible format. This does not indicate whether the model supports caching — caching support depends on OpenCode Go.
+> [!NOTE]
+> Whether non-DeepSeek models display cache data depends on whether the model API returns cache metrics in an OpenAI-compatible format. This does not indicate whether the model supports caching — caching support depends on OpenCode Go.
 
 ![token_counter](/assets/screenshots/token_counter.png)
 
@@ -53,6 +51,19 @@ Built-in presets:
 | Extra Creative | 1.7 |
 
 You can also configure `opencodego.temperature` and `opencodego.top_p` directly in `settings.json` (requires `opencodego.modelPreset` set to `"custom"`).
+
+### Extended Vision Understanding
+
+This extension adds **extended vision understanding** capability to **text-only models** that do not natively support vision. When you send a message with an image to these models, they can call a vision-capable model to describe the image, and then answer based on that description.
+
+You can configure the default vision model and whether to enable thinking when describing images. By default, Qwen3.6-Plus is used to describe images.
+
+> [!NOTE]
+> This is an experimental feature and may not work reliably.
+
+### OpenCode Zen Free Models
+
+Disabled by default. Enable via the `opencodego.enableZenFreeModels` setting. When enabled, free models fetched from the Zen API are added to the model picker with a `Zen/` prefix (e.g. `Zen/DeepSeek V4 Flash Free`). Requires a full reload of VS Code to take effect after changing the setting.
 
 ### Configuration
 
@@ -80,7 +91,11 @@ Available in `settings.json`:
 | `opencodego.commitIncludeCommitDiff` | `false` | Include the actual code changes (diff) of recent commits in the style reference, helping the model generate messages that better match the project's commit style. |
 | `opencodego.enableZenFreeModels` | `false` | Enable OpenCode Zen free models in the model picker. Zen free models are NOT supported for git commit message generation. Requires a full reload to take effect. |
 | `opencodego.commitAttachContextFiles` | `true` | Attach the content of AGENTS.md and README.md from the repository root as additional context for commit message generation, helping the model better understand the project. |
+| `opencodego.visionProxyModel` | `qwen3.6-plus` | Vision model used by the `describe_image` tool when the selected model does not support vision. |
+| `opencodego.visionProxyPrompt` | `""` | Custom prompt sent to the vision model when describing an image. |
+| `opencodego.visionProxyThinking` | `false` | Enable thinking/reasoning when describing images via the vision proxy. |
 
+> [!NOTE]
 > Models with switchable thinking (e.g., DeepSeek, Qwen) provide reasoning effort levels such as `Disabled`/`High`/`Maximum`.
 
 ### Build
@@ -99,9 +114,10 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 
 ## 中文
 
+> [!IMPORTANT]
 > **本插件与 OpenCode 或 Anomaly 无关，也未获得其官方维护或认可。**
 
-将 [OpenCode Go](https://opencode.ai/go) 以及可选的 Zen 免费模型集成到 GitHub Copilot Chat 的 VS Code 扩展。
+将 [OpenCode Go](https://opencode.ai/go) 以及可选的 Zen 免费模型集成到 GitHub Copilot Chat 的 VS Code 插件。
 
 ### 使用
 
@@ -110,15 +126,12 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 3. **选择模型**：在 Copilot Chat 底部模型选择器中选择 "OpenCode Go" 或 "OpenCode Zen" 下的模型
 4. **开始对话**
 
-### 启用 OpenCode Zen 免费模型
-
-该功能默认关闭，通过 `opencodego.enableZenFreeModels` 设置启用。开启后，将从 Zen API 获取免费模型并添加到模型选择器中，名称带 `Zen/` 前缀（如 `Zen/DeepSeek V4 Flash Free`）。更改设置后需要重新加载 VS Code 才能生效。
-
 ### Token 用量指示器
 
 安装后，使用 OpenCode Go 提供的模型时，状态栏会显示当前上下文用量与累计输入/输出 Token 量。DeepSeek 和通过 OpenAI 格式返回缓存用量的模型还会显示**累计缓存命中量**与**缓存命中率**。
 
-> 提示：非 DeepSeek 的模型是否显示缓存数据取决于模型接口是否通过 OpenAI 格式返回缓存数据，这并不代表此模型是否支持缓存。模型对于缓存的支持情况取决于 OpenCode Go。
+> [!NOTE]
+> 非 DeepSeek 的模型是否显示缓存数据取决于模型接口是否通过 OpenAI 格式返回缓存数据，这并不代表此模型是否支持缓存。模型对于缓存的支持情况取决于 OpenCode Go。
 
 ![token_counter](/assets/screenshots/token_counter.png)
 
@@ -127,6 +140,19 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 在源代码管理（SCM）面板中点击魔法棒按钮，自动生成 Git 提交消息。
 
 可在配置里配置使用的模型、语言、参考的最近提交数量以及是否附加上下文文件。
+
+### 扩展视觉理解
+
+本插件为**不支持视觉理解**的**纯文本模型**添加了**扩展视觉理解**功能，当你向这些模型发送带有图片的信息时，他们可以调用支持视觉理解的模型为图片输出描述，然后再回答。
+
+通过配置文件可更改默认使用的模型以及是否在描述图片时启用思考。默认情况下，将使用 Qwen3.6-Plus 描述图片。
+
+> [!NOTE]
+> 此功能为实验性功能，不保证好用。
+
+### 启用 OpenCode Zen 免费模型
+
+该功能默认关闭，通过 `opencodego.enableZenFreeModels` 设置启用。开启后，将从 Zen API 获取免费模型并添加到模型选择器中，名称带 `Zen/` 前缀（如 `Zen/DeepSeek V4 Flash Free`）。更改设置后需要重新加载 VS Code 才能生效。
 
 ### 调整模型温度
 
@@ -169,7 +195,11 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 | `opencodego.commitIncludeCommitDiff` | `false` | 在风格参考中包含历史提交的实际代码变更（diff），帮助模型生成更符合项目提交风格的消息。 |
 | `opencodego.enableZenFreeModels` | `false` | 启用 OpenCode Zen 免费模型并添加到模型选择器中。暂不支持用于 Git 提交消息生成。更改后需重载 VS Code 生效。 |
 | `opencodego.commitAttachContextFiles` | `true` | 将仓库根目录的 AGENTS.md 和 README.md 作为额外上下文附加到提交消息生成中，帮助模型更好地理解项目。 |
+| `opencodego.visionProxyModel` | `qwen3.6-plus` | 用于 describe_image 工具的视觉模型 ID。当所选模型不支持视觉时，该模型用于描述附带图片。 |
+| `opencodego.visionProxyPrompt` | `""` | 发送给视觉模型的图片描述自定义提示词。 |
+| `opencodego.visionProxyThinking` | `false` | 在视觉代理描述图片时启用思考/推理功能。 |
 
+> [!NOTE]
 > 支持切换思考模式的模型（如 DeepSeek、Qwen）提供`禁用思考`/`高`/`极高`等推理强度选项。
 
 ### 编译
