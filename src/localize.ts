@@ -57,6 +57,10 @@ const zhCN: Record<string, string> = {
 	// reasoning effort title (key is English fallback text)
 	"Reasoning Effort": "推理强度",
 
+	// vision proxy
+	"Reading image...": "正在阅读图片...",
+	" done": " 完成",
+
 	// extension.ts - model preset (setModelPreset command)
 	"Custom (manual input)": "自定义 (手动输入)",
 	" (current)": " (当前)",
