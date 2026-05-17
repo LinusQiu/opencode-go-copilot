@@ -10,6 +10,7 @@
 
 ## English
 
+> [!IMPORTANT]
 > **This is not affiliated with, officially maintained by, or endorsed by OpenCode or Anomaly.**
 
 Integrate [OpenCode Go](https://opencode.ai/go) and optional Zen free models into GitHub Copilot Chat as a VS Code extension.
@@ -25,7 +26,8 @@ Integrate [OpenCode Go](https://opencode.ai/go) and optional Zen free models int
 
 Once installed, the status bar shows the current context usage and cumulative input/output token counts for OpenCode Go models. DeepSeek models and models that return cache metrics via the OpenAI-compatible format also display the **cumulative cache hit count** and **cache hit rate** in the tooltip.
 
-> Note: Whether non-DeepSeek models display cache data depends on whether the model API returns cache metrics in an OpenAI-compatible format. This does not indicate whether the model supports caching — caching support depends on OpenCode Go.
+> [!NOTE]
+> Whether non-DeepSeek models display cache data depends on whether the model API returns cache metrics in an OpenAI-compatible format. This does not indicate whether the model supports caching — caching support depends on OpenCode Go.
 
 ![token_counter](/assets/screenshots/token_counter.png)
 
@@ -56,6 +58,7 @@ This extension adds **extended vision understanding** capability to **text-only 
 
 You can configure the default vision model and whether to enable thinking when describing images. By default, Qwen3.6-Plus is used to describe images.
 
+> [!NOTE]
 > This is an experimental feature and may not work reliably.
 
 ### OpenCode Zen Free Models
@@ -92,6 +95,7 @@ Available in `settings.json`:
 | `opencodego.visionProxyPrompt` | `""` | Custom prompt sent to the vision model when describing an image. |
 | `opencodego.visionProxyThinking` | `false` | Enable thinking/reasoning when describing images via the vision proxy. |
 
+> [!NOTE]
 > Models with switchable thinking (e.g., DeepSeek, Qwen) provide reasoning effort levels such as `Disabled`/`High`/`Maximum`.
 
 ### Build
@@ -110,6 +114,7 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 
 ## 中文
 
+> [!IMPORTANT]
 > **本插件与 OpenCode 或 Anomaly 无关，也未获得其官方维护或认可。**
 
 将 [OpenCode Go](https://opencode.ai/go) 以及可选的 Zen 免费模型集成到 GitHub Copilot Chat 的 VS Code 插件。
@@ -125,7 +130,8 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 
 安装后，使用 OpenCode Go 提供的模型时，状态栏会显示当前上下文用量与累计输入/输出 Token 量。DeepSeek 和通过 OpenAI 格式返回缓存用量的模型还会显示**累计缓存命中量**与**缓存命中率**。
 
-> 提示：非 DeepSeek 的模型是否显示缓存数据取决于模型接口是否通过 OpenAI 格式返回缓存数据，这并不代表此模型是否支持缓存。模型对于缓存的支持情况取决于 OpenCode Go。
+> [!NOTE]
+> 非 DeepSeek 的模型是否显示缓存数据取决于模型接口是否通过 OpenAI 格式返回缓存数据，这并不代表此模型是否支持缓存。模型对于缓存的支持情况取决于 OpenCode Go。
 
 ![token_counter](/assets/screenshots/token_counter.png)
 
@@ -141,6 +147,7 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 
 通过配置文件可更改默认使用的模型以及是否在描述图片时启用思考。默认情况下，将使用 Qwen3.6-Plus 描述图片。
 
+> [!NOTE]
 > 此功能为实验性功能，不保证好用。
 
 ### 启用 OpenCode Zen 免费模型
@@ -192,6 +199,7 @@ MIT License. This project references code from [oai-compatible-copilot](https://
 | `opencodego.visionProxyPrompt` | `""` | 发送给视觉模型的图片描述自定义提示词。 |
 | `opencodego.visionProxyThinking` | `false` | 在视觉代理描述图片时启用思考/推理功能。 |
 
+> [!NOTE]
 > 支持切换思考模式的模型（如 DeepSeek、Qwen）提供`禁用思考`/`高`/`极高`等推理强度选项。
 
 ### 编译
