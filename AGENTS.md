@@ -33,7 +33,7 @@
 | **流式推理** | 支持 SSE (Server-Sent Events) 流式响应，实时输出文本和工具调用 |
 | **Thinking/推理** | 支持模型的推理过程展示 ("thinking" 状态)，包括 XML think 块解析 |
 | **工具调用 (Tool Calling)** | 支持 VS Code 的 LanguageModelToolCallPart 机制 |
-| **图片代理 (Tool-based)** | 为不支持视觉的模型注入 `describe_image` 工具，模型可自主选择调用视觉模型（默认 Qwen3.6-Plus）描述图片，支持两轮 API 请求完成"调用工具→获取描述→继续回答"的完整流程 |
+| **图片代理 (Tool-based)** | 为不支持视觉的模型注入 `describe_image` 工具，模型可自主选择调用视觉模型（默认 Qwen3.6-Plus）描述图片，支持两轮 API 请求完成"调用工具→获取描述→继续回答"的完整流程。视觉模型 ID、描述提示词和思考模式均可通过设置配置 |
 | **Token 计数** | 使用 `o200k_base` tiktoken 分词器精确统计 token 用量 |
 | **状态栏** | 实时显示当前会话 token 使用量、累计用量、缓存命中率 |
 | **Git 提交消息生成** | 一键生成 Conventional Commit 格式的 Git 提交消息，支持 `auto` 语言模式自动从历史提交检测语言 |
@@ -44,6 +44,7 @@
 | **请求延迟** | 可配置的请求间隔延迟，避免触发 API 限流 |
 | **超时控制** | 可配置的请求超时时间（默认 10 分钟） |
 | **立即取消** | 取消请求时通过 `reader.cancel()` 立即中断流式读取，停止后台接收 |
+| **视觉代理配置** | 支持通过设置 `opencodego.visionProxyModel`、`opencodego.visionProxyPrompt`、`opencodego.visionProxyThinking` 配置图片代理所使用的视觉模型、提示词和思考模式 |
 
 ### 1.3 模型清单
 
@@ -74,7 +75,9 @@
 
 > 所有模型在模型选择器中均显示**一个条目**，通过**推理强度选择器**（中文标签）切换思考模式。  
 > - `thinkingMode="switchable"`：用户可选择`禁用思考`或启用思考（强度可配置）  
-> - `thinkingMode="always"`：推理始终启用，选择器中不显示`禁用思考`选项（模型特性）
+> - `thinkingMode="always"`：推理始终启用，选择器中不显示`禁用思考`选项（模型特性）  
+> 
+> **关于图像输入：** 所有模型（包括非视觉模型）的 `imageInput` 能力均声明为 `true`，以确保 VS Code 始终传递图片数据。非视觉模型通过内部的 `describe_image` 工具代理机制处理图片，不直接支持视觉输入。
 
 ---
 
@@ -150,6 +153,9 @@ provideLanguageModelChatResponse(model, messages, options, progress, token)
   │       ├── preset 模式 → 注入预设的 temperature（不传入 top_p，由模型使用默认值）
   │       └── custom 模式 → 注入用户自定义的 temperature 和 top_p（如有设置）
   │
+  ├── 2c. 注入 vision 配置
+  │       └── modelConfig.vision = um?.vision ?? false
+  │
   ├── 3. 确定 API 模式 (apiMode: "openai" | "anthropic")
   │
   ├── 4. 记录请求开始日志
@@ -201,7 +207,17 @@ provideLanguageModelChatResponse(model, messages, options, progress, token)
   │                 │   └── input_json_delta → 工具参数
   │                 └── content_block_stop/message_stop → 结束
   │
-  ├── 11. 错误处理:
+  ├── 11. 图片代理拦截处理:
+  │       └── _handleInterceptedToolCall()
+  │           ├── 检查 interceptedToolCall
+  │           ├── 发出 thinking 指示器 "Reading image..."
+  │           ├── 调用 callVisionModel() 获取描述
+  │           ├── 关闭 thinking 指示器
+  │           └── 构建第二轮 API 请求 (assistant tool_call + tool_result)
+  │               ├── 保留 temperature/reasoning_effort 等原始参数
+  │               └── DeepSeek 兼容注入 reasoning_content
+  │
+  ├── 12. 错误处理:
   │        ├── 超时 (aborted) → 友好超时提示
   │        ├── 连接被终止 → 友好终止提示
   │        └── 其他错误 → 原样抛出
@@ -254,28 +270,45 @@ provideLanguageModelChatResponse(model, messages, options, progress, token)
 非视觉模型收到含图片的消息:
   │
   ├── 1. convertMessages()
-  │      模型 vision=false，有 image → 替换为 "[Image attached (imageIndex=N)...]"
-  │      原图数据存入 CommonApi.storedImages
+  │      模型 vision=false，有 image → 替换为 "[The user sent an image (imageIndex=N)... I MUST call the describe_image tool...]"
+  │      原图数据存入 CommonApi.storedImages 静态池
+  │      记录 _hasStoredImages = true，保存 _originalApiMessages
   │
   ├── 2. prepareRequestBody()
-  │      在 tools 数组中注入 describe_image 工具定义
+  │      有 stored images → 注入 describe_image 工具定义到 tools 列表
+  │      设置 tool_choice = "auto"（DeepSeek 等模型拒绝强制 tool_choice）
   │
   ├── 3. 第一次 API 请求（含 describe_image 工具）
-  │      └── 模型决定是否调用 describe_image
+  │      └── 模型自主决定是否调用 describe_image
   │
-  ├── 4. processDelta() 拦截
-  │      describe_image 被缓存到 interceptedToolCall
-  │      不在 progress 中发出 LanguageModelToolCallPart（避免 Copilot 拦截）
+  ├── 4. processDelta() / processAnthropicChunk() 拦截
+  │      describe_image 被缓存到 interceptedToolCall（不在 progress 中发出）
+  │      tryEmitBufferedToolCall() 和 flushToolCallBuffers() 同时跳过 describe_image
   │
-  ├── 5. provider 检测 interceptedToolCall
-  │      ├── 发出 LanguageModelThinkingPart("🔍 Reading image...")
-  │      ├── 调 visionModel.sendRequest([图片 + 描述提示词])
-  │      └── 发出 LanguageModelTextPart("[Image Description: ...]")
+  ├── 5. provider._handleInterceptedToolCall() 处理
+  │      ├── 读取设置: visionProxyModel (默认 qwen3.6-plus)
+  │      │              visionProxyPrompt (自定义提示词)
+  │      │              visionProxyThinking (默认 false)
+  │      ├── 发出 LanguageModelThinkingPart("Reading image...")
+  │      ├── 调用 callVisionModel() → vscode.lm.selectChatModels() 查找视觉模型
+  │      │   └── 发送图片 + 提示词，收集流式文本描述
+  │      ├── 发出 LanguageModelThinkingPart(" done") + 关闭 thinking
+  │      └── 构建第二轮消息（assistant tool_call + tool result）
   │
   └── 6. 第二次 API 请求
-         ├── 追加 assistant(tool_calls) + tool(result)
-         └── 模型基于描述继续生成 → 输出最终回答
+         ├── 复制 _originalApiMessages + 追加 assistant(tool_calls) + tool(result)
+         ├── 保留 temperature、reasoning_effort 等参数
+         ├── DeepSeek 兼容: assistant 消息中注入 reasoning_content
+         └── 流式输出最终回答到 progress
 ```
+
+#### 第二轮请求特点
+
+- **OpenAI 模式**: 使用 `tool_calls` + `tool` role 消息格式构建第二轮
+- **Anthropic 模式**: 使用 `tool_use` + `tool_result` content block 格式构建第二轮
+- **参数保留**: 第二轮保留 temperature、top_p、thinking 模式等原始参数
+- **绕过工具注入**: 第二轮不注入工具定义（减少 token 消耗）
+- **DeepSeek 兼容**: 对 DeepSeek 模型的 assistant tool_call 消息注入 reasoning_content 字段
 
 ### 2.6 Git 提交消息生成流程
 
@@ -347,28 +380,28 @@ src/
 | 文件 | 行数 | 职责 |
 |------|------|------|
 | `extension.ts` | ~175 | 扩展激活/停用，注册 Provider 和 4 条命令 |
-| `provider.ts` | ~395 | 实现 `LanguageModelChatProvider`，处理聊天请求全流程 |
-| `models.ts` | ~215 | 14 个内置模型定义，模型配置查询 |
+| `provider.ts` | ~670 | 实现 `LanguageModelChatProvider`，处理聊天请求全流程及图片代理第二轮处理 |
+| `models.ts` | ~218 | 14 个内置模型定义，模型配置查询（所有模型声明 `imageInput: true`） |
 | `types.ts` | ~95 | `OpenCodeGoModelItem`, `ModelPreset`, `ModelsResponse`, `RetryConfig` 等类型 |
-| `commonApi.ts` | ~380 | `CommonApi<TMessage,TRequestBody>` 抽象基类 |
+| `commonApi.ts` | ~458 | `CommonApi<TMessage,TRequestBody>` 抽象基类（图片存储、工具调用拦截） |
 | `provideModel.ts` | ~25 | 模型信息获取 |
 | `provideToken.ts` | ~100 | Token 用量计算 |
 | `utils.ts` | ~285 | 工具函数 (重试、角色映射、工具转换等) |
 | `statusBar.ts` | ~140 | 状态栏创建、更新、累计计数器 |
 | `logger.ts` | ~55 | 日志输出 (LogOutputChannel) |
-| `localize.ts` | ~105 | 中英文国际化 |
+| `localize.ts` | ~109 | 中英文国际化 |
 | `versionManager.ts` | ~35 | 扩展版本信息 |
-| `openai/openaiApi.ts` | ~555 | OpenAI 格式 API 实现 (消息转换/请求构建/流式处理) |
+| `openai/openaiApi.ts` | ~613 | OpenAI 格式 API 实现 (消息转换/请求构建/流式处理/图片代理) |
 | `openai/openaiTypes.ts` | ~75 | OpenAI 类型定义 |
-| `anthropic/anthropicApi.ts` | ~475 | Anthropic 格式 API 实现 |
+| `anthropic/anthropicApi.ts` | ~535 | Anthropic 格式 API 实现 (消息转换/请求构建/流式处理/图片代理) |
 | `anthropic/anthropicTypes.ts` | ~130 | Anthropic 类型定义 |
 | `gitCommit/commitMessageGenerator.ts` | ~295 | Git 提交消息生成逻辑 |
 | `gitCommit/gitUtils.ts` | ~260 | Git 命令封装 |
 | `tokenizer/tokenizerManager.ts` | ~115 | o200k_base 分词器管理 (含 LRU 缓存) |
 | `tokenizer/imageUtils.ts` | ~130 | 图片尺寸解析 (PNG/GIF/JPEG/WebP) |
-| `vision/types.ts` | ~40 | Vision proxy 类型定义（`StoredImage`, `InterceptedToolCall`, `DESCRIBE_IMAGE_TOOL_DEF`） |
-| `vision/imageProxy.ts` | ~45 | 图片代理核心：调用视觉模型描述图片（`callVisionModel`） |
-| `zen/zenModels.ts` | ~160 | Zen 免费模型定义、API 拉取、缓存管理、配置查询 |
+| `vision/types.ts` | ~53 | Vision proxy 类型定义（`StoredImage`, `InterceptedToolCall`, `DESCRIBE_IMAGE_TOOL_DEF`, `DESCRIBE_IMAGE_TOOL_NAME`, `DEFAULT_VISION_PROMPT`） |
+| `vision/imageProxy.ts` | ~42 | 图片代理核心：调用视觉模型描述图片（`callVisionModel`），支持 thinking 模式配置 |
+| `zen/zenModels.ts` | ~256 | Zen 免费模型定义、API 拉取、缓存管理、配置查询（所有模型声明 `imageInput: true`） |
 
 ---
 
@@ -406,7 +439,10 @@ src/
 计算文本或消息的 Token 数量。委托给 `countMessageTokens()`。
 
 #### `provideLanguageModelChatResponse(model, messages, options, progress, token): Promise<void>`
-核心方法：处理聊天请求，流式返回响应。包括模型配置获取（内置模型 → Zen 模型回退）、API Key 验证、推理力度应用、temperature/top_p 注入（模型预设或自定义设置）、延迟控制、超时管理、API 路由、流式解析和错误处理。
+核心方法：处理聊天请求，流式返回响应。包括模型配置获取（内置模型 → Zen 模型回退）、API Key 验证、推理力度应用、temperature/top_p 注入（模型预设或自定义设置）、延迟控制、超时管理、API 路由、流式解析、图片代理拦截处理和错误处理。
+
+#### `private async _handleInterceptedToolCall(params): Promise<void>`
+处理图片代理拦截。检测 API 实例的 `interceptedToolCall`，读取设置 `opencodego.visionProxyModel`/`visionProxyPrompt`/`visionProxyThinking`，发出 thinking 指示器，调用 `callVisionModel()` 获取描述，构建第二轮 API 请求（assistant tool_call + tool result），保留 temperature/reasoning_effort 等原始参数，DeepSeek 兼容注入 `reasoning_content`。
 
 #### `private async ensureApiKey(): Promise<string | undefined>`
 确保 API Key 存在于 SecretStorage 中，缺失时弹出输入框提示用户输入。
@@ -422,7 +458,7 @@ src/
 |------|------|------|
 | `baseId` | `string` | API 请求中使用的模型 ID |
 | `displayName` | `string` | 用户友好的显示名称 |
-| `vision` | `boolean` | 是否支持图片输入 |
+| `vision` | `boolean` | 是否支持图片输入（所有模型 `imageInput` 能力声明为 `true`，非视觉模型通过代理处理） |
 | `thinkingMode` | `"switchable" \| "always"` | switchable=可选择思考开关, always=思考始终启用 |
 | `defaultReasoningEffort` | `string` (可选) | 默认推理力度 |
 | `supportedReasoningEfforts` | `string[]` (可选) | 支持的推理力度选项 |
@@ -520,6 +556,8 @@ API 实现的抽象基类。
 | `_modelId` | `string` | 模型 ID |
 | `_onUsage` | `((usage: StreamUsage) => void) \| undefined` | 用量回调 |
 | `interceptedToolCall` | `InterceptedToolCall \| null` | 被拦截的 describe_image 工具调用 |
+| `_imageStoreKey` | `string \| null` | 当前实例的图片存储键 |
+| `_originalApiMessages` | `any[] \| null` | 转换后的原始 API 消息，用于构建第二轮请求 |
 | `storedImages` | `Map<string, StoredImage[]>`（静态） | 请求图片数据暂存池 |
 | `generateImageStoreKey()` | `string`（静态） | 生成唯一的图片存储键 |
 
@@ -673,7 +711,7 @@ describe_image 工具定义的 OpenAI 格式（`type: "function"`），包含参
 ### 4.23 `src/vision/imageProxy.ts`
 
 #### `callVisionModel(imageData, mimeType, visionModelId, visionPrompt, token): Promise<string>`
-调用视觉模型描述图片。使用 `vscode.lm.selectChatModels()` 查找模型，发送图片+提示词，收集流式文本描述返回。
+调用视觉模型描述图片。使用 `vscode.lm.selectChatModels()` 查找模型，发送图片+提示词，收集流式文本描述返回。支持 thinking 模式配置，通过 `opencodego.visionProxyThinking` 设置控制是否启用推理。
 
 ---
 
@@ -785,10 +823,10 @@ describe_image 工具定义的 OpenAI 格式（`type: "function"`），包含参
 构造函数，传入模型 ID。
 
 #### `convertMessages(messages, modelConfig): OpenAIChatMessage[]`
-将 VS Code 消息转换为 OpenAI 格式。支持文本、图片、工具调用、工具结果、推理内容的消息转换。
+将 VS Code 消息转换为 OpenAI 格式。支持文本、图片、工具调用、工具结果、推理内容的消息转换。modelConfig 新增 `vision` 字段，非视觉模型时自动替换图片为文本引用并存储图片数据。
 
 #### `prepareRequestBody(rb, um?, options?): Record<string, unknown>`
-构建 OpenAI 请求体。设置 temperature、top_p、max_tokens、reasoning_effort、thinking 模式、stop、tools、tool_choice 以及各种惩罚参数和 extra 参数。
+构建 OpenAI 请求体。设置 temperature、top_p、max_tokens、reasoning_effort、thinking 模式、stop、tools、tool_choice 以及各种惩罚参数和 extra 参数。非视觉模型且存在图片时自动注入 `describe_image` 工具定义。
 
 #### `processStreamingResponse(responseBody, progress, token): Promise<void>`
 处理 OpenAI SSE 流式响应。逐行解析 `data:` 前缀的 SSE 事件，处理 `[DONE]` 标记，解析 usage 用量信息，委托 `processDelta()`。注册取消回调：`token.onCancellationRequested` 时调用 `reader.cancel()` 立即中断流式读取。
@@ -849,10 +887,10 @@ Anthropic 请求体。包含 `model`, `messages`, `max_tokens`, `system`, `strea
 构造函数，传入模型 ID。
 
 #### `convertMessages(messages, modelConfig): AnthropicMessage[]`
-将 VS Code 消息转换为 Anthropic 格式。系统消息提取到 `_systemContent`。支持文本、图片、工具使用、工具结果、推理内容。使用 `content` 块数组格式。
+将 VS Code 消息转换为 Anthropic 格式。系统消息提取到 `_systemContent`。支持文本、图片、工具使用、工具结果、推理内容。使用 `content` 块数组格式。modelConfig 新增 `vision` 字段，非视觉模型时自动替换图片为文本引用并存储图片数据。
 
 #### `prepareRequestBody(rb, um?, options?): AnthropicRequestBody`
-构建 Anthropic 请求体。设置 max_tokens、system、temperature、top_p、top_k、tools（转换为 Anthropic 格式）、tool_choice（auto/any/none）以及 extra 参数。
+构建 Anthropic 请求体。设置 max_tokens、system、temperature、top_p、top_k、tools（转换为 Anthropic 格式）、tool_choice（auto/any/none）以及 extra 参数。非视觉模型且存在图片时自动注入 `describe_image` 工具定义。
 
 #### `processStreamingResponse(responseBody, progress, token): Promise<void>`
 处理 Anthropic SSE 流式响应。逐行解析 `data:` 前缀的 SSE 事件，委托 `processAnthropicChunk()`。注册取消回调：`token.onCancellationRequested` 时调用 `reader.cancel()` 立即中断流式读取。
