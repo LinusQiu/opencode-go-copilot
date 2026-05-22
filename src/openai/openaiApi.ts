@@ -129,15 +129,17 @@ export class OpenaiApi extends CommonApi<OpenAIChatMessage, Record<string, unkno
                     assistantMessage.content = joinedText;
                 }
 
-                if (modelConfig.includeReasoningInRequest) {
-                    assistantMessage.reasoning_content = joinedThinking || "Next step.";
+                if (modelConfig.includeReasoningInRequest && joinedThinking) {
+                    assistantMessage.reasoning_content = joinedThinking;
                 }
 
                 if (toolCalls.length > 0) {
                     assistantMessage.tool_calls = toolCalls;
                 }
 
-                if (assistantMessage.content || assistantMessage.reasoning_content || assistantMessage.tool_calls) {
+                // Must have content or tool_calls — reasoning_content alone is rejected
+                // by providers that require content/tool_calls to be set (e.g. DeepSeek).
+                if (assistantMessage.content || assistantMessage.tool_calls) {
                     out.push(assistantMessage);
                 }
             }
